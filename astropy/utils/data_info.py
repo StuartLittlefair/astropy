@@ -24,9 +24,9 @@ import numpy as np
 from functools import partial
 import warnings
 import re
+from collections import OrderedDict
 
 from ..extern import six
-from ..utils import OrderedDict
 from ..utils.compat import NUMPY_LT_1_8
 
 # Tuple of filterwarnings kwargs to ignore when calling info
@@ -452,7 +452,6 @@ class BaseColumnInfo(DataInfo):
         col_len : int
             Length of original object
         '''
-        from ..table.index import Index
         from ..table.sorted_array import SortedArray
         if not getattr(self, '_copy_indices', True):
             # Necessary because MaskedArray will perform a shallow copy

@@ -34,6 +34,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import copy
 import io
 import os
+import re
 import textwrap
 import warnings
 import platform
@@ -127,8 +128,13 @@ else:
 
 
 # Additional relax bit flags
-WCSHDO_SIP = 0x10000
+WCSHDO_SIP = 0x30000
 
+# Regular expression defining SIP keyword It matches keyword that starts with A
+# or B, optionally followed by P, followed by an underscore then a number in
+# range of 0-19, followed by an underscore and another number in range of 0-19.
+# Keyword optionally ends with a capital letter.
+SIP_KW = re.compile('''^[AB]P?_1?[0-9]_1?[0-9][A-Z]?$''')
 
 def _parse_keysel(keysel):
     keysel_flags = 0
@@ -761,7 +767,7 @@ reduce these to 2 dimensions using the naxis kwarg.
                     tables[i] = d_lookup
                 else:
                     warnings.warn('Polynomial distortion is not implemented.\n', AstropyUserWarning)
-                for key in list(header.keys()):
+                for key in list(header):
                     if key.startswith(dp + str('.')):
                         del header[key]
             else:
@@ -914,7 +920,7 @@ reduce these to 2 dimensions using the naxis kwarg.
                     d_lookup = DistortionLookupTable(d_data, d_crpix, d_crval, d_cdelt)
                     tables[i] = d_lookup
 
-                    for key in list(header.keys()):
+                    for key in list(header):
                         if key.startswith(dp + str('.')):
                             del header[key]
                 else:
@@ -978,20 +984,11 @@ reduce these to 2 dimensions using the naxis kwarg.
         """
         Remove SIP information from a header.
         """
-        # Never pass SIP CTYPES or other information along to
-        # wcslib
-        for sel in [''] + [chr(i + ord('A')) for i in range(26)]:
-            for axis in ['1', '2']:
-                key = 'CTYPE{0}{1}'.format(axis, sel)
-                val = header.get(key)
-                if val is not None and val.endswith('-SIP'):
-                    header[key] = val[:-4]
-            for prefix in ('A', 'B', 'AP', 'BP'):
-                for i in range(20):
-                    for j in range(20):
-                        key = '{0}_{1}_{2}{3}'.format(prefix, i, j, sel)
-                        if key in header:
-                            del header[key]
+        # Never pass SIP coefficients to wcslib
+        # CTYPE must be passed with -SIP to wcslib
+        for key in (m.group() for m in map(SIP_KW.match, list(header))
+                    if m is not None):
+            del header[key]
 
     def _read_sip_kw(self, header):
         """
@@ -2484,6 +2481,7 @@ reduce these to 2 dimensions using the naxis kwarg.
           8. Keyword order may be changed.
 
         """
+        precision = WCSHDO_P14
         display_warning = False
         if relax is None:
             display_warning = True
@@ -2494,6 +2492,8 @@ reduce these to 2 dimensions using the naxis kwarg.
             relax &= ~WCSHDO_SIP
         else:
             do_sip = relax
+
+        relax = precision | relax
 
         if self.wcs is not None:
             if key is not None:
@@ -2513,15 +2513,15 @@ reduce these to 2 dimensions using the naxis kwarg.
             header = fits.Header()
 
         if do_sip and self.sip is not None:
-            for key, val in self._write_sip_kw().items():
-                header[key] = val
+            for kw, val in self._write_sip_kw().items():
+                header[kw] = val
 
         if display_warning:
             full_header = self.to_header(relax=True, key=key)
             missing_keys = []
-            for key, val in full_header.items():
-                if key not in header:
-                    missing_keys.append(key)
+            for kw, val in full_header.items():
+                if kw not in header:
+                    missing_keys.append(kw)
 
             if len(missing_keys):
                 warnings.warn(

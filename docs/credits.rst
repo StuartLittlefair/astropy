@@ -5,7 +5,8 @@ Authors and Credits
 Astropy Project Coordinators
 ============================
 
-* Perry Greenfield
+* Tom Aldcroft
+* Kelle Cruz
 * Thomas Robitaille
 * Erik Tollerud
 
@@ -16,6 +17,7 @@ Core Package Contributors
 * Ryan Abernathey
 * Shailesh Ahuja
 * Tom Aldcroft
+* Anthony Horton
 * Anne Archibald
 * Cristian Ardelean
 * Matteo Bachetti
@@ -26,6 +28,7 @@ Core Package Contributors
 * Andreas Baumbach
 * Chris Beaumont
 * Daniel Bell
+* Elijah Bernstein-Cooper
 * Kristin Berry
 * Francesco Biscani
 * Thompson Le Blanc
@@ -53,7 +56,9 @@ Core Package Contributors
 * Matthew Craig
 * Steven Crawford
 * Neil Crighton
+* Robert Cross
 * Kelle Cruz
+* Dan P. Cunningham
 * Daniel Datsev
 * Matt Davis
 * Christoph Deil
@@ -90,20 +95,24 @@ Core Package Contributors
 * JC Hsu
 * Lingyi Hu
 * Eric Jeschke
+* Eric Depagne
 * Joseph Jon Booker
 * Sarah Kendrew
 * Marten van Kerkwijk
 * Wolfgang Kerzendorf
 * Lennard Kiehl
-* David Kirkby
 * Rashid Khan
+* Aleh Khvalko
+* David Kirkby
 * Dominik Klaes
 * Kacper Kowalik
 * Roban Hultman Kramer
 * Arne de Laat
 * Antony Lee
+* Daniel Lenz
 * Simon Liedtke
 * Pey Lian Lim
+* Stuart Littlefair
 * Joseph Long
 * Joe Lyman
 * Curtis McCully
@@ -111,14 +120,15 @@ Core Package Contributors
 * Aaron Meisner
 * Serge Montagnac
 * José Sabater Montes
+* Francesco Montesano
 * Brett Morris
 * Michael Mueller
 * Stuart Mumford
 * Demitri Muna
 * Prasanth Nair
 * Bogdan Nicula
-* Asra Nizami
 * Joe Philip Ninan
+* Asra Nizami
 * Bryce Nordgren
 * Miruna Oprescu
 * Carl Osterwisch
@@ -132,7 +142,7 @@ Core Package Contributors
 * Ray Plante
 * Orion Poplawski
 * Adrian Price-Whelan
-* J. Xavier Prochaska
+* J\. Xavier Prochaska
 * David Pérez-Suárez
 * QuanTakeuchi
 * Tanuj Rastogi
@@ -143,6 +153,7 @@ Core Package Contributors
 * Joseph Ryan
 * Eloy Salinas
 * Gerrit Schellenberger
+* Michael Seifert
 * David Shiga
 * Albert Y. Shih
 * David Shupe

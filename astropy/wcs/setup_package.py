@@ -20,7 +20,7 @@ from astropy_helpers.distutils_helpers import get_distutils_build_option
 from astropy.extern import six
 
 WCSROOT = os.path.relpath(os.path.dirname(__file__))
-WCSVERSION = "5.10"
+WCSVERSION = "5.14"
 
 
 def b(s):
@@ -244,8 +244,7 @@ def get_wcslib_cfg(cfg, wcslib_files, include_paths):
                 '-Wno-strict-prototypes',
                 '-Wno-unused-function',
                 '-Wno-unused-value',
-                '-Wno-uninitialized',
-                '-Wno-unused-but-set-variable'])
+                '-Wno-uninitialized'])
 
 
 

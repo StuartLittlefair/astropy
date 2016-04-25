@@ -55,7 +55,7 @@ This table can be read with the following::
 
   >>> from astropy.io import ascii
   >>> data = ascii.read("sources.dat")  # doctest: +SKIP
-  >>> print data  # doctest: +SKIP
+  >>> print(data)                       # doctest: +SKIP
   obsid redshift  X    Y      object
   ----- -------- ---- ---- -----------
    3102     0.32 4167 4085 Q1250+568-A
@@ -95,6 +95,12 @@ implementation (described in :ref:`fast_ascii_io`). If the fast engine fails,
 disable the fast engine::
 
    >>> data = ascii.read(lines, format='csv', fast_reader=False)
+
+.. Note::
+
+   Reading a table which contains non-ASCII (unicode) characters is only
+   supported in Python 3 or greater.  If you have Python 2.x and need
+   this functionality, consider using a newer version of Python.
 
 Writing Tables
 --------------

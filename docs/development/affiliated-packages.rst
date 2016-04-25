@@ -87,7 +87,12 @@ Starting a new package
     #       are using for your package.
     cp ../template/setup.cfg .
 
-    # edit the VERSION variable, the rest can be kept as-is
+    # edit the VERSION variable and if applicable, the package_data values,
+    # the rest can be kept as-is
+    # Note: If your package data directory has a sub-directory, you HAVE TO
+    #       break 'data/*' to 'data/*.*' and 'data/subdir/*' (two different
+    #       appends). If you do not have any package data, you can just comment
+    #       out the line that appends 'data/*'.
     cp ../template/setup.py .
 
    .. important:: Before proceeding, make sure you have edited ``setup.cfg`` and
@@ -132,7 +137,10 @@ Starting a new package
     git add <packagename>/conftest.py
 
    You can also uncomment the line ``enable_deprecations_as_exceptions()`` if
-   you want deprecation warnings to make tests fail.
+   you want deprecation warnings to make tests fail. There are also
+   options to customize the information to be printed when running the
+   tests. The package template has comments in the ``conftest.py`` file that
+   indicate what they are.
 
 #. If you are interested in accurate coverage test results, copy over the
    ``coveragerc`` and the ``setup_package.py`` files to your repository (the
@@ -309,7 +317,7 @@ files manually`_ section since this explains what many of the files do.
       git add docs/index.rst
       git mv docs/packagename docs/<packagename>
 
-#. Edit this file (``README.rst``) and delete all of this content, and replace it
+#. Edit the ``README.rst`` file, deleting all of the content and replacing it
    with a short description of your affiliated package.
 
 #.  Open ``docs/<packagename>/index.rst`` and you can start writing the documentation

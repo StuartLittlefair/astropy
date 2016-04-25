@@ -21,12 +21,7 @@ from .np_utils import fix_column_name
 
 # These "shims" provide __getitem__ implementations for Column and MaskedColumn
 from ._column_mixins import _ColumnGetitemShim, _MaskedColumnGetitemShim
-from ..config import ConfigAlias
 
-
-AUTO_COLNAME = ConfigAlias(
-    '0.4', 'AUTO_COLNAME', 'auto_colname',
-    'astropy.table.column', 'astropy.table')
 
 # Create a generic TableFormatter object for use by bare columns with no
 # parent table.
@@ -710,6 +705,11 @@ class Column(BaseColumn):
                                           unit=unit, format=format, meta=meta,
                                           copy=copy, copy_indices=copy_indices)
         return self
+
+    def __setattr__(self, item, value):
+        if not isinstance(self, MaskedColumn) and item == "mask":
+            raise AttributeError("cannot set mask value to a column in non-masked Table")
+        return super(Column, self).__setattr__(item, value)
 
     def _base_repr_(self, html=False):
         # If scalar then just convert to correct numpy type and use numpy repr

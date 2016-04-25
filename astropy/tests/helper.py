@@ -22,18 +22,16 @@ try:
     # Import pkg_resources to prevent it from issuing warnings upon being
     # imported from within py.test.  See
     # https://github.com/astropy/astropy/pull/537 for a detailed explanation.
-    import pkg_resources
+    import pkg_resources  # pylint: disable=W0611
 except ImportError:
     pass
 
-from .. import test
-from ..utils.exceptions import (AstropyWarning,
-                                AstropyDeprecationWarning,
+from ..utils.exceptions import (AstropyDeprecationWarning,
                                 AstropyPendingDeprecationWarning)
 
 
 # For backward-compatibility with affiliated packages
-from .runner import TestRunner
+from .runner import TestRunner  # pylint: disable=W0611
 
 __all__ = ['raises', 'enable_deprecations_as_exceptions', 'remote_data',
            'treat_deprecations_as_exceptions', 'catch_warnings',
@@ -238,12 +236,12 @@ def treat_deprecations_as_exceptions():
     # before we turn the warnings into exceptions, we're golden.
     try:
         # A deprecated stdlib module used by py.test
-        import compiler
+        import compiler  # pylint: disable=W0611
     except ImportError:
         pass
 
     try:
-        import scipy
+        import scipy  # pylint: disable=W0611
     except ImportError:
         pass
 
@@ -256,15 +254,6 @@ def treat_deprecations_as_exceptions():
     if _include_astropy_deprecations:
         warnings.filterwarnings("error", ".*", AstropyDeprecationWarning)
         warnings.filterwarnings("error", ".*", AstropyPendingDeprecationWarning)
-
-    if sys.version_info[:2] == (2, 6):
-        # py.test's warning.showwarning does not include the line argument
-        # on Python 2.6, so we need to explicitly ignore this warning.
-        warnings.filterwarnings(
-            "ignore",
-            r"functions overriding warnings\.showwarning\(\) must support "
-            r"the 'line' argument",
-            DeprecationWarning)
 
     if sys.version_info[:2] >= (3, 4):
         # py.test reads files with the 'U' flag, which is now
@@ -332,6 +321,44 @@ class catch_warnings(warnings.catch_warnings):
 
     def __exit__(self, type, value, traceback):
         treat_deprecations_as_exceptions()
+
+
+class ignore_warnings(catch_warnings):
+    """
+    This can be used either as a context manager or function decorator to
+    ignore all warnings that occur within a function or block of code.
+
+    An optional category option can be supplied to only ignore warnings of a
+    certain category or categories (if a list is provided).
+    """
+
+    def __init__(self, category=None):
+        super(ignore_warnings, self).__init__()
+
+        if isinstance(category, type) and issubclass(category, Warning):
+            self.category = [category]
+        else:
+            self.category = category
+
+    def __call__(self, func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Originally this just reused self, but that doesn't work if the
+            # function is called more than once so we need to make a new
+            # context manager instance for each call
+            with self.__class__(category=self.category):
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    def __enter__(self):
+        retval = super(ignore_warnings, self).__enter__()
+        if self.category is not None:
+            for category in self.category:
+                warnings.simplefilter('ignore', category)
+        else:
+            warnings.simplefilter('ignore')
+        return retval
 
 
 def assert_follows_unicode_guidelines(

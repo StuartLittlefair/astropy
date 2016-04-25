@@ -22,11 +22,12 @@ from ..representation import REPRESENTATION_CLASSES
 from ...coordinates import (ICRS, FK4, FK5, Galactic, SkyCoord, Angle,
                             SphericalRepresentation, CartesianRepresentation,
                             UnitSphericalRepresentation, AltAz)
-from ...coordinates import Latitude, Longitude, EarthLocation
+from ...coordinates import Latitude, EarthLocation
 from ...time import Time
 from ...utils import minversion
 from ...utils.exceptions import AstropyDeprecationWarning
-from ...utils.compat import NUMPY_LT_1_7
+from ...utils.compat import NUMPY_LT_1_7  # pylint: disable=W0611
+
 
 RA = 1.0 * u.deg
 DEC = 2.0 * u.deg
@@ -69,13 +70,13 @@ rt_sets = []
 rt_frames = [ICRS, FK4, FK5, Galactic]
 for rt_frame0 in rt_frames:
     for rt_frame1 in rt_frames:
-            for equinox0 in (None, 'J1975.0'):
-                for obstime0 in (None, 'J1980.0'):
-                    for equinox1 in (None, 'J1975.0'):
-                        for obstime1 in (None, 'J1980.0'):
-                            rt_sets.append((rt_frame0, rt_frame1,
-                                            equinox0, equinox1,
-                                            obstime0, obstime1))
+        for equinox0 in (None, 'J1975.0'):
+            for obstime0 in (None, 'J1980.0'):
+                for equinox1 in (None, 'J1975.0'):
+                    for obstime1 in (None, 'J1980.0'):
+                        rt_sets.append((rt_frame0, rt_frame1,
+                                        equinox0, equinox1,
+                                        obstime0, obstime1))
 rt_args = ('frame0','frame1','equinox0','equinox1','obstime0','obstime1')
 
 
@@ -482,8 +483,6 @@ def test_seps():
     assert sep3d == 1 * u.kpc
 
 def test_repr():
-    # Repr tests must use exact floating point vals because Python 2.6
-    # outputs values like 0.1 as 0.1000000000001.  No workaround found.
     sc1 = SkyCoord(0 * u.deg, 1 * u.deg, frame='icrs')
     sc2 = SkyCoord(1 * u.deg, 1 * u.deg, frame='icrs', distance=1 * u.kpc)
 
@@ -584,6 +583,14 @@ def test_position_angle():
     # because of the frame transform, it's just a *bit* more than 90 degrees
     assert cicrs.position_angle(cfk5) > 90.0 * u.deg
     assert cicrs.position_angle(cfk5) < 91.0 * u.deg
+
+
+def test_position_angle_directly():
+    """Regression check for #3800: position_angle should accept floats."""
+    from ..angle_utilities import position_angle
+    result = position_angle(10., 20., 10., 20.)
+    assert result.unit is u.radian
+    assert result.value == 0.
 
 
 def test_table_to_coord():

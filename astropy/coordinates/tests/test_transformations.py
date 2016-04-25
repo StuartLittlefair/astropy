@@ -7,16 +7,11 @@ from __future__ import (absolute_import, division, print_function,
 import numpy as np
 
 from ... import units as u
-from ..distances import Distance
 from .. import transformations as t
-from ..builtin_frames import ICRS, FK5, FK4, FK4NoETerms, Galactic, \
-                             Supergalactic, Galactocentric, CIRS, GCRS, AltAz, \
-                             ITRS, PrecessedGeocentric
+from ..builtin_frames import ICRS, FK5, FK4, FK4NoETerms, Galactic
 from .. import representation as r
 from ..baseframe import frame_transform_graph
-from ...tests.helper import (pytest, quantity_allclose as allclose,
-                             assert_quantity_allclose as assert_allclose)
-from .utils import randomly_sample_sphere
+from ...tests.helper import assert_quantity_allclose as assert_allclose
 from ...time import Time
 
 
@@ -209,4 +204,3 @@ def test_obstime():
     # because the obstime is different
     assert icrs_50.ra.degree != icrs_75.ra.degree
     assert icrs_50.dec.degree != icrs_75.dec.degree
-

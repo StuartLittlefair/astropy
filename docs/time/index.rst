@@ -9,6 +9,7 @@ Time and Dates (`astropy.time`)
 .. |Quantity| replace:: :class:`~astropy.units.Quantity`
 .. |Longitude| replace:: :class:`~astropy.coordinates.Longitude`
 .. |EarthLocation| replace:: :class:`~astropy.coordinates.EarthLocation`
+.. |SkyCoord| replace:: :class:`~astropy.coordinates.SkyCoord`
 
 Introduction
 ============
@@ -90,10 +91,9 @@ than for ``t`` because they are expressed relative to the TT time scale.  Of
 course, from the numbers or strings one could not tell; one format in which
 this information is kept is the ``fits`` format::
 
-  >>> t2.fits
-  array(['1999-01-01T00:01:04.307(TT)', '2010-01-01T00:01:06.184(TT)'],
-        dtype='|S27')
-  
+  >>> print(t2.fits)
+  ['1999-01-01T00:01:04.307(TT)' '2010-01-01T00:01:06.184(TT)']
+
 Finally, some further examples of what is possible.  For details, see
 the API documentation below.
 
@@ -645,6 +645,35 @@ process of changing the time scale therefore begins by making a copy of the
 original object and then converting the internal time values in the copy to the
 new time scale.  The new |Time| object is returned by the attribute access.
 
+Caching
+^^^^^^^
+
+The computations for transforming to different time scales or formats can be
+time-consuming for large arrays.  In order to avoid repeated computations, each
+|Time| or |TimeDelta| instance caches such transformations internally::
+
+  >>> t = Time(np.arange(1e6), format='unix', scale='utc')  # doctest: +SKIP
+
+  >>> time x = t.tt  # doctest: +SKIP
+  CPU times: user 263 ms, sys: 4.02 ms, total: 267 ms
+  Wall time: 267 ms
+
+  >>> time x = t.tt  # doctest: +SKIP
+  CPU times: user 28 µs, sys: 9 µs, total: 37 µs
+  Wall time: 32.9 µs
+
+Actions such as changing the output precision or sub-format will clear
+the cache.  In order to explicitly clear the internal cache do::
+
+  >>> del t.cache  # doctest: +SKIP
+
+  >>> time x = t.tt  # doctest: +SKIP
+  CPU times: user 263 ms, sys: 4.02 ms, total: 267 ms
+  Wall time: 267 ms
+
+Since these objects are immutable (cannot be changed internally), this should
+not normally be required.
+
 Transformation offsets
 """"""""""""""""""""""
 
@@ -782,7 +811,7 @@ Use of the |TimeDelta| object is easily illustrated in the few examples below::
   >>> t2 - dt2  # Subtract a TimeDelta from a Time
   <Time object: scale='utc' format='iso' value=2010-01-31 23:59:10.000>
 
-  >>> dt + dt2
+  >>> dt + dt2  # doctest: +FLOAT_CMP
   <TimeDelta object: scale='tai' format='jd' value=31.0005787037>
 
   >>> import numpy as np
@@ -823,7 +852,7 @@ differenced::
 
   >>> dt.tt  # doctest: +FLOAT_CMP
   <TimeDelta object: scale='tt' format='jd' value=364.999999746>
-  >>> dt.tdb
+  >>> dt.tdb  # doctest: +IGNORE_EXCEPTION_DETAIL
   Traceback (most recent call last):
     ...
   ScaleValueError: Cannot convert TimeDelta with scale 'tcg' to scale 'tdb'
@@ -834,6 +863,55 @@ object (or is TAI in case of a UTC time)::
 
   >>> t2.tai + TimeDelta(365., format='jd', scale=None)
   <Time object: scale='tai' format='iso' value=2011-12-31 23:59:27.068>
+
+Barycentric and Heliocentric Light Travel Time Corrections
+------------------------------------------------------------
+
+The arrival times of photons at an observatory are not particularly useful for
+accurate timing work, such as eclipse/transit timing of binaries or exoplanets. 
+This is because the changing location of the observatory causes photons to
+arrive early or late. The solution is to calculate the time the photon would
+have arrived at a standard location; either the Solar system barycentre or the
+heliocentre.
+
+Suppose you observed IP Peg from Greenwich and have a list of times in MJD form, in
+the UTC timescale. You then create appropriate |Time| and |SkyCoord| objects and
+calculate light travel times to the barycentre as follows::
+
+    >>> from astropy import time, coordinates as coord, units as u
+    >>> ip_peg = coord.SkyCoord("23:23:08.55", "+18:24:59.3",
+    ...                         unit=(u.hourangle, u.deg), frame='icrs')
+    >>> greenwich = coord.EarthLocation.of_site('greenwich')  
+    >>> times = time.Time([56325.95833333, 56325.978254], format='mjd',
+    ...                   scale='utc', location=greenwich)  
+    >>> ltt_bary = times.light_travel_time(ip_peg)  
+          
+If you desire the light travel time to the heliocentre instead then use::
+          
+    >>> ltt_helio = times.light_travel_time(ip_peg, 'heliocentric') 
+
+The method returns an |TimeDelta| object, which can be added to
+your times to give the arrival time of the photons at the barycentre or
+heliocentre.  Here, one should be careful with the timescales used; for more
+detailed information about timescales, see
+http://astropy.readthedocs.org/en/stable/time/index.html#time-scale.
+
+The heliocentre is not a fixed point, and therefore the gravity
+continually changes at the heliocentre. Thus, the use of a relativistic
+timescale like TDB is not particularly appropriate, and, historically,
+times corrected to the heliocentre are given in the UTC timescale::
+
+    >>> times_heliocentre = times.utc + ltt_helio  
+
+Corrections to the barycentre are more precise than the heliocentre,
+because the barycenter is a fixed point where gravity is constant. For
+maximum accuracy you want to have your barycentric corrected times in a
+timescale that has always ticked at a uniform rate, and ideally one
+whose tick rate is related to the rate that a clock would tick at the
+barycentre. For this reason, barycentric corrected times normally use
+the TDB timescale::
+
+    >>> time_barycentre = times.tdb + ltt_bary 
 
 Interaction with Time-like Quantities
 -------------------------------------

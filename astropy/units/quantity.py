@@ -11,20 +11,19 @@ from __future__ import (absolute_import, unicode_literals, division,
 
 # Standard library
 import numbers
+from fractions import Fraction
 
 import numpy as np
 
 # AstroPy
 from ..extern import six
 from .core import (Unit, dimensionless_unscaled, UnitBase, UnitsError,
-                   get_current_unit_registry)
+                   get_current_unit_registry, UnitConversionError)
 from .format.latex import Latex
 from ..utils.compat import NUMPY_LT_1_7, NUMPY_LT_1_8, NUMPY_LT_1_9
-from ..utils.compat.fractions import Fraction
 from ..utils.compat.misc import override__dir__
 from ..utils.misc import isiterable, InheritDocstrings
 from ..utils.data_info import ParentDtypeInfo
-from .utils import validate_power
 from .. import config as _config
 
 
@@ -222,8 +221,9 @@ class Quantity(np.ndarray):
                             subok=True, ndmin=ndmin)
 
         # Maybe list/tuple of Quantity? short-circuit array for speed
-        if(not isinstance(value, np.ndarray) and isiterable(value) and
-           all(isinstance(v, Quantity) for v in value)):
+        if (not isinstance(value, np.ndarray) and isiterable(value) and
+            all(isinstance(v, Quantity) for v in value)):
+            # Convert all quantities to the same unit.
             if unit is None:
                 unit = value[0].unit
             value = [q.to(unit).value for q in value]
@@ -356,17 +356,27 @@ class Quantity(np.ndarray):
         # amount that depends on one of the input values, so we need to treat
         # this as a special case.
         # TODO: find a better way to deal with this case
-        if function is np.power and result_unit is not dimensionless_unscaled:
+        if function is np.power and result_unit != dimensionless_unscaled:
 
             if units[1] is None:
                 p = args[1]
             else:
                 p = args[1].to(dimensionless_unscaled).value
 
-            result_unit = result_unit ** validate_power(p)
+            try:
+                result_unit = result_unit ** p
+            except ValueError as exc:
+                # Changing the unit does not work for, e.g., array-shaped
+                # power, but this is OK if we're (scaled) dimensionless.
+                try:
+                    converters[0] = units[0]._get_converter(
+                        dimensionless_unscaled)
+                except UnitConversionError:
+                    raise exc
+                else:
+                    result_unit = dimensionless_unscaled
 
         # We now prepare the output object
-
         if self is obj:
 
             # this happens if the output object is self, which happens
@@ -494,10 +504,20 @@ class Quantity(np.ndarray):
                 # For output arrays that require scaling, we can reuse the
                 # output array to perform the scaling in place, as long as the
                 # array is not integral. Here, we set the obj_array to `None`
-                # when it can not be used to store the scaled result.
-                if not (result_unit is None or
-                        np.can_cast(np.result_type(*inputs), obj_array.dtype)):
+                # when it cannot be used to store the scaled result.
+                # Use a try/except, since np.result_type can fail, which would
+                # break the wrapping #4770.
+                try:
+                    tmp_dtype = np.result_type(*inputs)
+                # Catch the appropriate exceptions: TypeError or ValueError in
+                # case the result_type raised an Exception, i.e. inputs is list
+                except (TypeError, ValueError):
                     obj_array = None
+                else:
+                    # Explicitly check if it can store the result.
+                    if not (result_unit is None or
+                            np.can_cast(tmp_dtype, obj_array.dtype)):
+                        obj_array = None
 
                 # Re-compute the output using the ufunc
                 if function.nin == 1:
@@ -1271,8 +1291,12 @@ class Quantity(np.ndarray):
             if unit is None:
                 unit = self.unit
 
-            if not (isinstance(out, Quantity) and
-                    out.__quantity_subclass__(unit)[0] is type(out)):
+            if (isinstance(out, Quantity) and
+                out.__quantity_subclass__(unit)[0] is type(out)):
+                # Set out to ndarray view to prevent calling __array_prepare__.
+                kwargs['out'] = out.view(np.ndarray)
+
+            else:
                 ok_class =  (out.__quantity_subclass__(out, unit)[0]
                              if isinstance(out, Quantity) else Quantity)
                 raise TypeError("out cannot be assigned to a {0} instance; "

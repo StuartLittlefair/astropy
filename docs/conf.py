@@ -68,6 +68,7 @@ del intersphinx_mapping['astropy']
 
 # add any custom intersphinx for astropy
 intersphinx_mapping['pytest'] = ('http://pytest.org/latest/', None)
+intersphinx_mapping['ipython'] = ('http://ipython.readthedocs.org/en/stable/', None)
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -95,7 +96,7 @@ rst_epilog += """
 
 project = u'Astropy'
 author = u'The Astropy Developers'
-copyright = u'2011-2015, ' + author
+copyright = u'2011-2016, ' + author
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -191,6 +192,8 @@ else:
     edit_on_github_branch = "master"
 edit_on_github_source_root = ""
 edit_on_github_doc_root = "docs"
+
+edit_on_github_skip_regex = '_.*|api/.*'
 
 github_issues_url = 'https://github.com/astropy/astropy/issues/'
 

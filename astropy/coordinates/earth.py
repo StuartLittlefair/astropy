@@ -9,6 +9,7 @@ from ..extern import six
 from ..utils.exceptions import AstropyUserWarning
 from . import Longitude, Latitude
 from .builtin_frames import ITRS
+from .errors import UnknownSiteException
 
 try:
     # Not guaranteed available at setup time.
@@ -186,13 +187,17 @@ class EarthLocation(u.Quantity):
         and all their properties.
 
         .. note::
-            When this function is called, it will first attempt to
-            download site information from the astropy data server.  If it
-            cannot (i.e., an internet connection is not available), it will fall
-            back on the list included with astropy (which is a limited and dated
-            set of sites).  If you think a site should be added, issue a pull
-            request to the
+            When this function is called, it will attempt to download site
+            information from the astropy data server. If you would like a site
+            to be added, issue a pull request to the
             `astropy-data repository <https://github.com/astropy/astropy-data>`_ .
+            If a site cannot be found in the registry (i.e., an internet
+            connection is not available), it will fall back on a built-in list,
+            In the future, this bundled list might include a version-controlled
+            list of canonical observatories extracted from the online version,
+            but it currently only contains the Greenwich Royal Observatory as an
+            example case.
+
 
         Parameters
         ----------
@@ -208,7 +213,11 @@ class EarthLocation(u.Quantity):
         --------
         get_site_names : the list of sites that this function can access
         """
-        el = cls._get_site_registry()[site_name]
+        registry = cls._get_site_registry()
+        try:
+            el = registry[site_name]
+        except UnknownSiteException as e:
+            raise UnknownSiteException(e.site, 'EarthLocation.get_site_names', close_names=e.close_names)
 
         if cls is el.__class__:
             return el

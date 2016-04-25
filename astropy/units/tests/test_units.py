@@ -10,6 +10,7 @@ Regression tests for the units package
 from __future__ import (absolute_import, unicode_literals, division,
                         print_function)
 
+from fractions import Fraction
 
 import numpy as np
 from numpy.testing.utils import assert_allclose
@@ -17,7 +18,6 @@ from numpy.testing.utils import assert_allclose
 from ...extern import six
 from ...extern.six.moves import cPickle as pickle
 from ...tests.helper import pytest, raises, catch_warnings
-from ...utils.compat.fractions import Fraction
 
 from ... import units as u
 from ... import constants as c
@@ -111,7 +111,7 @@ def test_units_conversion():
 
 def test_units_manipulation():
     # Just do some manipulation and check it's happy
-    (u.kpc * u.yr) ** (1, 3) / u.Myr
+    (u.kpc * u.yr) ** Fraction(1, 3) / u.Myr
     (u.AA * u.erg) ** 9
 
 

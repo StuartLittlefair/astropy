@@ -13,7 +13,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 # STDLIB
 import os
 import shutil
-import sys
 import tempfile
 
 # LOCAL
@@ -69,7 +68,7 @@ class TestConeSearchValidation(object):
         local_outdir = os.path.join(self.out_dir, 'subtmp1')
         local_list = [
             'http://www.google.com/foo&',
-            'http://vizier.u-strasbg.fr/viz-bin/votable/-A?-source=I/252/out&']
+            'http://vizier.u-strasbg.fr/viz-bin/votable/-A?-out.all&-source=I/252/out&']
         validate.check_conesearch_sites(destdir=local_outdir,
                                         parallel=parallel,
                                         url_list=local_list)

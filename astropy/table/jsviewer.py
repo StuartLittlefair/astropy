@@ -23,20 +23,12 @@ class Conf(_config.ConfigNamespace):
         'The URL to the jquery datatables library.')
 
     css_urls = _config.ConfigItem(
-        ['https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css'],
+        ['https://cdn.datatables.net/1.10.9/css/jquery.dataTables.css'],
         'The URLs to the css file(s) to include.', cfgtype='list')
 
 
 conf = Conf()
 
-
-JQUERY_URL = _config.ConfigAlias(
-    '0.4', 'JQUERY_URL', 'jquery_url',
-    'astropy.table.jsviewer', 'astropy.table.jsviewer')
-
-DATATABLES_URL = _config.ConfigAlias(
-    '0.4', 'DATATABLES_URL', 'datatables_url',
-    'astropy.table.jsviewer', 'astropy.table.jsviewer')
 
 EXTERN_JS_DIR = abspath(join(dirname(extern.__file__), 'js'))
 EXTERN_CSS_DIR = abspath(join(dirname(extern.__file__), 'css'))
@@ -49,6 +41,7 @@ require.config({{paths: {{
 require(["datatables"], function(){{
     console.log("$('#{tid}').dataTable()");
     $('#{tid}').dataTable({{
+        "order": [],
         "iDisplayLength": {display_length},
         "aLengthMenu": {display_length_menu},
         "pagingType": "full_numbers"
@@ -60,9 +53,10 @@ require(["datatables"], function(){{
 HTML_JS_SCRIPT = """
 $(document).ready(function() {{
     $('#{tid}').dataTable({{
-     "iDisplayLength": {display_length},
-     "aLengthMenu": {display_length_menu},
-     "pagingType": "full_numbers"
+        "order": [],
+        "iDisplayLength": {display_length},
+        "aLengthMenu": {display_length_menu},
+        "pagingType": "full_numbers"
     }});
 }} );
 """
@@ -123,7 +117,7 @@ class JSViewer(object):
     def css_urls(self):
         if self._use_local_files:
             return ['file://' + join(EXTERN_CSS_DIR,
-                                     'jquery.dataTables.min.css')]
+                                     'jquery.dataTables.css')]
         else:
             return conf.css_urls
 

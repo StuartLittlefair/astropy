@@ -9,28 +9,21 @@ from ..sites import get_builtin_sites, get_downloaded_sites, SiteRegistry
 def test_builtin_sites():
     reg = get_builtin_sites()
 
-    keck = reg['keck']
-    lon, lat, el = keck.to_geodetic()
-    assert_quantity_allclose(lon, -1*Longitude('155:28.7', unit=u.deg),
-                             atol=0.001*u.deg)
-    assert_quantity_allclose(lat, Latitude('19:49.7', unit=u.deg),
-                             atol=0.001*u.deg)
-    assert_quantity_allclose(el, 4160*u.m, atol=1*u.m)
-
-    keck = reg['ctio']
-    lon, lat, el = keck.to_geodetic()
-    assert_quantity_allclose(lon, -1*Longitude('70.815', unit=u.deg),
-                             atol=0.001*u.deg)
-    assert_quantity_allclose(lat, Latitude('-30.16527778', unit=u.deg),
-                             atol=0.001*u.deg)
-    assert_quantity_allclose(el, 2215*u.m, atol=1*u.m)
+    greenwich = reg['greenwich']
+    lon, lat, el = greenwich.to_geodetic()
+    assert_quantity_allclose(lon, Longitude('0:0:0', unit=u.deg),
+                             atol=10*u.arcsec)
+    assert_quantity_allclose(lat, Latitude('51:28:40', unit=u.deg),
+                             atol=1*u.arcsec)
+    assert_quantity_allclose(el, 46*u.m, atol=1*u.m)
 
     names = reg.names
-    assert 'keck' in names
-    assert 'ctio' in names
+    assert 'greenwich' in names
+    assert 'example_site' in names
 
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as exc:
         reg['nonexistent site']
+    assert exc.value.args[0] == "Site 'nonexistent site' not in database. Use the 'names' attribute to see available sites."
 
 @remote_data
 def test_online_stes():
@@ -38,7 +31,7 @@ def test_online_stes():
 
     keck = reg['keck']
     lon, lat, el = keck.to_geodetic()
-    assert_quantity_allclose(lon, -1*Longitude('155:28.7', unit=u.deg),
+    assert_quantity_allclose(lon, -Longitude('155:28.7', unit=u.deg),
                              atol=0.001*u.deg)
     assert_quantity_allclose(lat, Latitude('19:49.7', unit=u.deg),
                              atol=0.001*u.deg)
@@ -48,29 +41,34 @@ def test_online_stes():
     assert 'keck' in names
     assert 'ctio' in names
 
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as exc:
         reg['nonexistent site']
+    assert exc.value.args[0] == "Site 'nonexistent site' not in database. Use the 'names' attribute to see available sites."
+
+    with pytest.raises(KeyError) as exc:
+        reg['kec']
+    assert exc.value.args[0] == "Site 'kec' not in database. Use the 'names' attribute to see available sites. Did you mean one of: 'keck'?'"
 
 
 @remote_data
 # this will *try* the online so we have to make it remote_data, even though it
-# falls back on the non-remote version
+# could fall back on the non-remote version
 def test_EarthLocation_basic():
-    keckel = EarthLocation.of_site('keck')
-    lon, lat, el = keckel.to_geodetic()
-    assert_quantity_allclose(lon, -1*Longitude('155:28.7', unit=u.deg),
-                             atol=0.001*u.deg)
-    assert_quantity_allclose(lat, Latitude('19:49.7', unit=u.deg),
-                             atol=0.001*u.deg)
-    assert_quantity_allclose(el, 4160*u.m, atol=1*u.m)
+    greenwichel = EarthLocation.of_site('greenwich')
+    lon, lat, el = greenwichel.to_geodetic()
+    assert_quantity_allclose(lon, Longitude('0:0:0', unit=u.deg),
+                             atol=10*u.arcsec)
+    assert_quantity_allclose(lat, Latitude('51:28:40', unit=u.deg),
+                             atol=1*u.arcsec)
+    assert_quantity_allclose(el, 46*u.m, atol=1*u.m)
 
     names = EarthLocation.get_site_names()
-    assert 'keck' in names
-    assert 'ctio' in names
+    assert 'greenwich' in names
+    assert 'example_site' in names
 
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as exc:
         EarthLocation.of_site('nonexistent site')
-
+    assert exc.value.args[0] == "Site 'nonexistent site' not in database. Use EarthLocation.get_site_names to see available sites."
 
 def test_EarthLocation_state_offline():
     EarthLocation._site_registry = None
@@ -127,9 +125,9 @@ def test_non_EarthLocation():
     # registry is cached on a per-class basis
     EarthLocation2._get_site_registry(force_builtin=True)
 
-    el2 = EarthLocation2.of_site('keck')
+    el2 = EarthLocation2.of_site('greenwich')
     assert type(el2) is EarthLocation2
-    assert el2.info.name == 'W. M. Keck Observatory'
+    assert el2.info.name == 'Royal Observatory Greenwich'
 
 def check_builtin_matches_remote(download_url=True):
     """

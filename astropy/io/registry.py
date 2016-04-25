@@ -5,10 +5,10 @@ from __future__ import (absolute_import, division, print_function,
 
 import re
 import sys
+from collections import OrderedDict
 
 import numpy as np
 
-from ..utils import OrderedDict
 from ..extern import six
 from ..extern.six.moves import zip
 
@@ -23,6 +23,15 @@ __doctest_skip__ = ['register_identifier']
 _readers = OrderedDict()
 _writers = OrderedDict()
 _identifiers = OrderedDict()
+
+PATH_TYPES = six.string_types
+try:
+    import pathlib
+except:
+    HAS_PATHLIB = False
+else:
+    HAS_PATHLIB = True
+    PATH_TYPES += (pathlib.Path,)
 
 
 def get_formats(data_class=None):
@@ -311,8 +320,12 @@ def read(cls, *args, **kwargs):
             fileobj = None
 
             if len(args):
-                if isinstance(args[0], six.string_types):
+                if isinstance(args[0], PATH_TYPES):
                     from ..utils.data import get_readable_fileobj
+                    # path might be a pathlib.Path object if HAS_PATHLIB,
+                    # so coerce to a regular string.
+                    if HAS_PATHLIB and isinstance(args[0], pathlib.Path):
+                        args = (str(args[0]),) + args[1:]
                     path = args[0]
                     try:
                         ctx = get_readable_fileobj(args[0], encoding='binary')
@@ -366,7 +379,11 @@ def write(data, *args, **kwargs):
         path = None
         fileobj = None
         if len(args):
-            if isinstance(args[0], six.string_types):
+            if isinstance(args[0], PATH_TYPES):
+                # path might be a pathlib.Path object if HAS_PATHLIB,
+                # so coerce to a regular string.
+                if HAS_PATHLIB and isinstance(args[0], pathlib.Path):
+                    args = (str(args[0]),) + args[1:]
                 path = args[0]
                 fileobj = None
             elif hasattr(args[0], 'read'):

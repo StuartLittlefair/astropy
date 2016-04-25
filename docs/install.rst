@@ -7,9 +7,11 @@ Requirements
 
 Astropy has the following strict requirements:
 
-- `Python <http://www.python.org/>`_ 2.6 (>=2.6.5), 2.7, 3.3, 3.4 or 3.5
+- `Python <http://www.python.org/>`_ 2.7, 3.3, 3.4 or 3.5
 
-  - Prior to Astropy v1.0 Python 3.1 and 3.2 are also supported.
+  - Prior to Astropy v1.0, Python 3.1 and 3.2 were also supported
+
+  - Prior to Astropy v1.2, Python 2.6 was supported
 
 - `Numpy`_ |minimum_numpy_version| or later
 
@@ -31,7 +33,7 @@ Astropy also depends on other packages for optional features:
 
 - `matplotlib <http://matplotlib.org/>`_: To provide plotting functionality that `astropy.visualization` enhances.
 
-- `WCSAxes <http://wcsaxes.readthedocs.org/en/latest/>`_: To use `astropy.wcs` to define projections in Matplotlib. 
+- `WCSAxes <http://wcsaxes.readthedocs.org/en/latest/>`_: To use `astropy.wcs` to define projections in Matplotlib.
 
 - `pytz <http://pythonhosted.org/pytz/>`_: To specify and convert between timezones.
 
@@ -39,7 +41,9 @@ Astropy also depends on other packages for optional features:
 
 - `pandas <http://pandas.pydata.org/>`_: To read/write
   :class:`~astropy.table.Table` objects from/to pandas DataFrame objects.
-  
+
+- `objgraph <https://mg.pov.lt/objgraph/>`_: Used only in tests to test for reference leaks.
+
 
 However, note that these only need to be installed if those particular features
 are needed. Astropy will import even if these dependencies are not installed.
@@ -154,19 +158,50 @@ Prerequisites
 -------------
 
 You will need a compiler suite and the development headers for Python and
-Numpy in order to build Astropy. On Linux, using the package manager for your
-distribution will usually be the easiest route, while on MacOS X you will
-need the XCode command line tools.
+Numpy in order to build Astropy.
 
-The `instructions for building Numpy from source
-<http://docs.scipy.org/doc/numpy/user/install.html>`_ are also a good
-resource for setting up your environment to build Python packages.
-
-You will also need `Cython <http://cython.org/>`_ (v0.15 or later) and
+You will also need `Cython <http://cython.org/>`_ (v0.19 or later) and
 `jinja2 <http://jinja.pocoo.org/docs/dev/>`_ (v2.7 or later) installed
 to build from source, unless you are installing a numbered release. (The
 releases packages have the necessary C files packaged with them, and hence do
 not require Cython.)
+
+Prerequisites for Linux
+-----------------------
+
+On Linux, using the package manager for your distribution will usually be
+the easiest route. In order to build from source, you'll need the python development package
+for your distro.
+
+For Debian/Ubuntu::
+
+    sudo apt-get install python-dev
+
+For Fedora/RHEL::
+
+    sudo yum install python-devel
+
+Prerequisites for Mac OS X
+--------------------------
+
+On MacOS X you will need the XCode command line tools which can be installed using
+
+For installing XCode command line tools::
+
+    xcode-select --install
+
+and follow the onscreen instructions to install the command line tools required.
+
+You'll also need the python development package for Mac OS X to proceed in building
+astropy from source.
+
+To install the python development package for Mac OS X, from a package manager
+like brew, macports or fink.
+
+
+The `instructions for building Numpy from source
+<http://docs.scipy.org/doc/numpy/user/install.html>`_ are also a good
+resource for setting up your environment to build Python packages.
 
 .. note::
 
@@ -269,6 +304,21 @@ the system `libexpat <http://www.libexpat.org/>`_, add the following to the
 
     [build]
     use_system_expat=1
+
+
+The C libraries currently bundled with Astropy include:
+
+- `wcslib <http://www.atnf.csiro.au/people/mcalabre/WCS/>`_ see
+  ``cextern/wcslib/README`` for the bundled version.
+
+- `cfitsio <http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html>`_ see
+  ``cextern/cfitsio/changes.txt`` for the bundled version.
+
+- `erfa <https://github.com/liberfa>`_ see ``cextern/erfa/README.rst`` for the
+  bundled version.
+
+- `expat <http://expat.sourceforge.net/>`_ see ``cextern/expat/README`` for the
+  bundled version.
 
 
 The required version of setuptools is not available

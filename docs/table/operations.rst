@@ -174,11 +174,10 @@ groups, e.g.::
 
 One can iterate over the group sub-tables and corresponding keys with::
 
-  >>> from itertools import izip
-  >>> for key, group in izip(obs_by_name.groups.keys, obs_by_name.groups):
+  >>> for key, group in zip(obs_by_name.groups.keys, obs_by_name.groups):
   ...     print('****** {0} *******'.format(key['name']))
   ...     print(group)
-  ...     print
+  ...     print('')
   ...
   ****** M101 *******
   name  obs_date  mag_b mag_v
@@ -220,10 +219,10 @@ Examples::
   >>> key_vals = np.array(['foo', 'bar', 'foo', 'foo', 'qux', 'qux'])
   >>> cg = c.group_by(key_vals)
 
-  >>> for key, group in izip(cg.groups.keys, cg.groups):
+  >>> for key, group in zip(cg.groups.keys, cg.groups):
   ...     print('****** {0} *******'.format(key))
   ...     print(group)
-  ...     print
+  ...     print('')
   ...
   ****** bar *******
    a
@@ -295,7 +294,7 @@ A single column of data can be aggregated as well::
   >>> key_vals = np.array(['foo', 'bar', 'foo', 'foo', 'qux', 'qux'])
   >>> cg = c.group_by(key_vals)
   >>> cg_sums = cg.groups.aggregate(np.sum)
-  >>> for key, cg_sum in izip(cg.groups.keys, cg_sums):
+  >>> for key, cg_sum in zip(cg.groups.keys, cg_sums):
   ...     print('Sum for {0} = {1}'.format(key, cg_sum))
   ...
   Sum for bar = 2
@@ -358,7 +357,7 @@ An example of using this function is::
   >>> t_positive = tg.groups.filter(all_positive)
   >>> for group in t_positive.groups:
   ...     print(group)
-  ...     print
+  ...     print('')
   ...
    a   b   c
   --- --- ---
@@ -486,7 +485,7 @@ table those values are marked as missing.  This is the default behavior and corr
       M31 1999-01-05  43.1
       M82 2012-10-30  45.0
 
-  >>> print(vstack([obs1, obs2], join_type='exact'))
+  >>> print(vstack([obs1, obs2], join_type='exact'))  # doctest: +IGNORE_EXCEPTION_DETAIL
   Traceback (most recent call last):
     ...
   TableMergeError: Inconsistent columns in input arrays (use 'inner'
@@ -559,7 +558,7 @@ number of rows::
     1 foo 1.4  ham  eggs
     2 bar 2.1 spam toast
 
-  >>> print(hstack([t1, t2], join_type='exact'))
+  >>> print(hstack([t1, t2], join_type='exact'))  # doctest: +IGNORE_EXCEPTION_DETAIL
   Traceback (most recent call last):
     ...
   TableMergeError: Inconsistent number of rows in input arrays (use 'inner' or
@@ -850,6 +849,12 @@ By default, a warning is emitted in the last case (both metadata values are not
 - ``'warn'`` - a warning is emitted, the value for the last table is picked
 - ``'error'`` - an exception is raised
 
+The default strategies for merging metadata can be augmented or customized by
+defining subclasses of the `~astropy.utils.metadata.MergeStrategy` base class.
+In most cases one also will use the
+`~astropy.utils.metadata.enable_merge_strategies` for enable the custom
+strategies. The linked documentation strings provide details.
+
 Merging column attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -882,8 +887,8 @@ Unique rows
 Sometimes it makes sense to use only rows with unique key columns or even
 fully unique rows from a table. This can be done using the above described
 :func:`~astropy.table.Table.group_by` method and ``groups`` attribute, or
-with the `~astropy.table.unique` convenience method. The
-`~astropy.table.unique` method returns with a sorted table containing the
+with the `~astropy.table.unique` convenience function. The
+`~astropy.table.unique` function returns with a sorted table containing the
 first row for each unique ``keys`` column value. If no ``keys`` is provided
 it returns with a sorted table containing all the fully unique rows.
 

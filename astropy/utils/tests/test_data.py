@@ -26,7 +26,7 @@ TESTURL = 'http://www.astropy.org'
 
 
 try:
-    import bz2
+    import bz2  # pylint: disable=W0611
 except ImportError:
     HAS_BZ2 = False
 else:
@@ -36,11 +36,18 @@ try:
     if sys.version_info >= (3,3,0):
         import lzma
     else:
-        from backports import lzma
+        from backports import lzma  # pylint: disable=W0611
 except ImportError:
     HAS_XZ = False
 else:
     HAS_XZ = True
+
+try:
+    import pathlib
+except ImportError:
+    HAS_PATHLIB = False
+else:
+    HAS_PATHLIB = True
 
 @remote_data
 def test_download_nocache():
@@ -227,7 +234,7 @@ def test_data_noastropy_fallback(monkeypatch):
     lockdir = os.path.join(_get_download_cache_locs()[0], 'lock')
 
     # better yet, set the configuration to make sure the temp files are deleted
-    data.DELETE_TEMPORARY_DOWNLOADS_AT_EXIT.set(True)
+    data.conf.delete_temporary_downloads_at_exit = True
 
     # make sure the config and cache directories are not searched
     monkeypatch.setenv(str('XDG_CONFIG_HOME'), 'foo')
@@ -396,3 +403,9 @@ def test_get_readable_fileobj_cleans_up_temporary_files(tmpdir, monkeypatch):
     # Assert that the temporary file was empty after get_readable_fileobj()
     # context manager finished running
     assert len(tempdir_listing) == 0
+
+@pytest.mark.skipif('not HAS_PATHLIB')
+def test_path_objects_get_readable_fileobj():
+    fpath = pathlib.Path(get_pkg_data_filename(os.path.join('data', 'local.dat')))
+    with get_readable_fileobj(fpath) as f:
+        assert f.read().rstrip() == 'This file is used in the test_local_data_* testing functions\nCONTENT'

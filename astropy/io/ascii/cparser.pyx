@@ -905,11 +905,15 @@ cdef class FastWriter:
 
         for col in six.itervalues(table.columns):
             if col.name in self.use_names: # iterate over included columns
-                if col.format is None:
+                # If col.format is None then don't use any formatter to improve
+                # speed.  However, if the column is a byte string and this
+                # is Py3, then use the default formatter (which in this case
+                # does val.decode('utf-8')) in order to avoid a leading 'b'.
+                if col.format is None and not (six.PY3 and col.dtype.kind == 'S'):
                     self.format_funcs.append(None)
                 else:
-                    self.format_funcs.append(pprint._format_funcs.get(col.format,
-                                                            auto_format_func))
+                    self.format_funcs.append(pprint._format_funcs.get(
+                        col.format, pprint._auto_format_func))
                 # col is a numpy.ndarray, so we convert it to
                 # an ordinary list because csv.writer will call
                 # np.array_str() on each numpy value, which is
@@ -948,13 +952,13 @@ cdef class FastWriter:
         if not hasattr(output, 'write'): # output is a filename
             output = open(output, 'w')
             opened_file = True # remember to close file afterwards
-        writer = csv.writer(output,
-                            delimiter=self.delimiter,
-                            doublequote=True,
-                            escapechar=None,
-                            quotechar=self.quotechar,
-                            quoting=csv.QUOTE_MINIMAL,
-                            lineterminator=os.linesep)
+        writer = core.CsvWriter(output,
+                                delimiter=self.delimiter,
+                                doublequote=True,
+                                escapechar=None,
+                                quotechar=self.quotechar,
+                                quoting=csv.QUOTE_MINIMAL,
+                                lineterminator=os.linesep)
         self._write_header(output, writer, header_output, output_types)
 
         # Split rows into N-sized chunks, since we don't want to
@@ -1044,38 +1048,3 @@ def get_fill_values(fill_values, read=True):
         return (fill_values, fill_empty)
     else:
         return fill_values # cache for empty values doesn't matter for writing
-
-def auto_format_func(format_, val):
-    """
-    Mimics pprint._auto_format_func for non-numpy values.
-    """
-    if six.callable(format_):
-        format_func = lambda format_, val: format_(val)
-        try:
-            out = format_func(format_, val)
-            if not isinstance(out, six.string_types):
-                raise ValueError('Format function for value {0} returned {1} instead of string type'
-                                 .format(val, type(val)))
-        except Exception as err:
-            raise ValueError('Format function for value {0} failed: {1}'
-                             .format(val, err))
-    else:
-        try:
-            # Convert val to Python object with tolist().  See
-            # https://github.com/astropy/astropy/issues/148#issuecomment-3930809
-            out = format_.format(val)
-            # Require that the format statement actually did something
-            if out == format_:
-                raise ValueError
-            format_func = lambda format_, val: format_.format(val)
-        except:  # Not sure what exceptions might be raised
-            try:
-                out = format_ % val
-                if out == format_:
-                    raise ValueError
-                format_func = lambda format_, val: format_ % val
-            except:
-                raise ValueError('Unable to parse format string {0}'
-                                 .format(format_))
-    pprint._format_funcs[format_] = format_func
-    return out

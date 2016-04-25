@@ -4,11 +4,11 @@ from __future__ import (absolute_import, division, print_function,
 from ..extern import six
 from ..extern.six.moves import zip as izip
 from ..extern.six.moves import range as xrange
-from .sorted_array import SortedArray
-from .index import QueryError, TableIndices, TableLoc, TableILoc
+from .index import TableIndices, TableLoc, TableILoc
 
 import re
 import sys
+from collections import OrderedDict
 
 from copy import deepcopy
 
@@ -18,7 +18,7 @@ from numpy import ma
 from .. import log
 from ..io import registry as io_registry
 from ..units import Quantity
-from ..utils import OrderedDict, isiterable, deprecated, minversion
+from ..utils import isiterable, deprecated, minversion
 from ..utils.console import color_print
 from ..utils.metadata import MetaData
 from ..utils.data_info import BaseColumnInfo, MixinInfo, ParentDtypeInfo
@@ -856,9 +856,17 @@ class Table(object):
             else:
                 print(line)
 
+    def _make_index_row_display_table(self, index_row_name):
+        if index_row_name not in self.columns:
+            idx_col = self.ColumnClass(name=index_row_name, data=np.arange(len(self)))
+            return self.__class__([idx_col] + self.columns.values(),
+                                           copy=False)
+        else:
+            return self
+
     def show_in_notebook(self, tableid=None, css=None, display_length=50,
                          table_class='table table-striped table-bordered '
-                         'table-condensed'):
+                         'table-condensed', show_row_index='idx'):
         """Render the table in HTML and show it in the IPython notebook.
 
         Parameters
@@ -877,8 +885,22 @@ class Table(object):
             A valid CSS string declaring the formatting for the table. Default
             to ``astropy.table.jsviewer.DEFAULT_CSS_NB``.
         display_length : int, optional
-            Number or rows to show. Default to 50.
+            Number or rows to show. Defaults to 50.
+        show_row_index : str or False
+            If this does not evaulate to False, a column with the given name
+            will be added to the version of the table that gets displayed.
+            This new column shows the index of the row in the table itself,
+            even when the displayed table is re-sorted by another column. Note
+            that if a column with this name already exists, this option will be
+            ignored. Defaults to "idx".
 
+        Notes
+        -----
+        Currently, unlike `show_in_browser` (with ``jsviewer=True``), this
+        method needs to access online javascript code repositories.  This is due
+        to modern browsers' limitations on accessing local files.  Hence, if you
+        call this method while offline (and don't have a cached version of
+        jquery and jquery.dataTables), you will not get the jsviewer features.
         """
 
         from .jsviewer import JSViewer
@@ -888,25 +910,27 @@ class Table(object):
             tableid = 'table{0}-{1}'.format(id(self),
                                             np.random.randint(1, 1e6))
 
-        jsv = JSViewer(use_local_files=False, display_length=display_length)
-        html = self._base_repr_(html=True, max_width=-1, tableid=tableid,
-                                max_lines=-1, show_dtype=False,
-                                tableclass=table_class)
+        jsv = JSViewer(display_length=display_length)
+        if show_row_index:
+            display_table = self._make_index_row_display_table(show_row_index)
+        else:
+            display_table = self
+        html = display_table._base_repr_(html=True, max_width=-1, tableid=tableid,
+                                         max_lines=-1, show_dtype=False,
+                                         tableclass=table_class)
+
         html += jsv.ipynb(tableid, css=css)
         return HTML(html)
 
     def show_in_browser(self, max_lines=5000, jsviewer=False,
                         browser='default', jskwargs={'use_local_files': True},
                         tableid=None, table_class="display compact",
-                        css=None):
+                        css=None, show_row_index=True):
 
         """Render the table in HTML and show it in a web browser.
 
         Parameters
         ----------
-        css : string
-            A valid CSS string declaring the formatting for the table. Default
-            to ``astropy.table.jsviewer.DEFAULT_CSS``.
         max_lines : int
             Maximum number of rows to export to the table (set low by default
             to avoid memory issues, since the browser view requires duplicating
@@ -916,8 +940,13 @@ class Table(object):
             If `True`, prepends some javascript headers so that the table is
             rendered as a `DataTables <https://datatables.net>`_ data table.
             This allows in-browser searching & sorting.
+        browser : str
+            Any legal browser name, e.g. ``'firefox'``, ``'chrome'``,
+            ``'safari'`` (for mac, you may need to use ``'open -a
+            "/Applications/Google Chrome.app" %s'`` for Chrome).  If
+            ``'default'``, will use the system default browser.
         jskwargs : dict
-            Passed to the `astropy.table.JSViewer` init. Default to
+            Passed to the `astropy.table.JSViewer` init. Defaults to
             ``{'use_local_files': True}`` which means that the JavaScript
             libraries will be served from local copies.
         tableid : str or `None`
@@ -927,11 +956,16 @@ class Table(object):
             A string with a list of HTML classes used to style the table.
             Default is "display compact", and other possible values can be
             found in http://www.datatables.net/manual/styling/classes
-        browser : str
-            Any legal browser name, e.g. ``'firefox'``, ``'chrome'``,
-            ``'safari'`` (for mac, you may need to use ``'open -a
-            "/Applications/Google Chrome.app" %s'`` for Chrome).  If
-            ``'default'``, will use the system default browser.
+        css : string
+            A valid CSS string declaring the formatting for the table. Defaults
+            to ``astropy.table.jsviewer.DEFAULT_CSS``.
+        show_row_index : bool
+            If this does not evaulate to False, a column with the given name
+            will be added to the version of the table that gets displayed.
+            This new column shows the index of the row in the table itself,
+            even when the displayed table is re-sorted by another column. Note
+            that if a column with this name already exists, this option will be
+            ignored. Defaults to "idx".
         """
 
         import os
@@ -951,9 +985,13 @@ class Table(object):
 
         with open(path, 'w') as tmp:
             if jsviewer:
-                self.write(tmp, format='jsviewer', css=css,
-                           max_lines=max_lines, jskwargs=jskwargs,
-                           table_id=tableid, table_class=table_class)
+                if show_row_index:
+                    display_table = self._make_index_row_display_table(show_row_index)
+                else:
+                    display_table = self
+                display_table.write(tmp, format='jsviewer', css=css,
+                                    max_lines=max_lines, jskwargs=jskwargs,
+                                    table_id=tableid, table_class=table_class)
             else:
                 self.write(tmp, format='html')
 
@@ -1509,7 +1547,7 @@ class Table(object):
         if name not in self.colnames:
             raise ValueError('column name {0} is not in the table'.format(name))
 
-        if self[name].indices:
+        if self[name].info.indices:
             raise ValueError('cannot replace a table index column')
 
         t = self.__class__([col], names=[name])
@@ -2182,7 +2220,8 @@ class Table(object):
             if not self.indices:
                 raise ValueError("Table sort requires input keys or a table index")
             keys = [x.info.name for x in self.indices[0].columns]
-        if type(keys) is not list:
+
+        if isinstance(keys, six.string_types):
             keys = [keys]
 
         indexes = self.argsort(keys)

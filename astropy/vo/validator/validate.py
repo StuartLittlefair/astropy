@@ -1,23 +1,24 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """Validate VO Services."""
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 from ...extern import six
 
 # STDLIB
 import multiprocessing
 import os
 import warnings
+from collections import OrderedDict
 
 # LOCAL
-from .exceptions import ValidationMultiprocessingError, InvalidValidationAttribute
+from .exceptions import (ValidationMultiprocessingError,
+                         InvalidValidationAttribute)
 from ..client import vos_catalog
 from ..client.exceptions import VOSError
-from ...config.configuration import ConfigAlias
 from ...io import votable
 from ...io.votable.exceptions import E19
 from ...io.votable.validator import html, result
 from ...logger import log
-from ...utils import OrderedDict  # For 2.6 compatibility
 from ...utils import data
 from ...utils.exceptions import AstropyUserWarning
 from ...utils.timer import timefunc
@@ -29,18 +30,6 @@ from .tstquery import parse_cs
 
 
 __all__ = ['check_conesearch_sites']
-
-CS_MSTR_LIST = ConfigAlias(
-    '0.4', 'CS_MSTR_LIST', 'conesearch_master_list',
-    'astropy.vo.validator.validate', 'astropy.vo.validator')
-
-CS_URLS = ConfigAlias(
-    '0.4', 'CS_URLS', 'conesearch_urls',
-    'astropy.vo.validator.validate', 'astropy.vo.validator')
-
-NONCRIT_WARNINGS = ConfigAlias(
-    '0.4', 'NONCRIT_WARNINGS', 'noncritical_warnings',
-    'astropy.vo.validator.validate', 'astropy.vo.validator')
 
 
 @timefunc(1)
@@ -135,12 +124,15 @@ def check_conesearch_sites(destdir=os.curdir, verbose=True, parallel=True,
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
         js_mstr = vos_catalog.VOSDatabase.from_registry(
-            CS_MSTR_LIST(), encoding='binary', show_progress=verbose)
+            conf.conesearch_master_list, encoding='binary',
+            show_progress=verbose)
 
     # Validate only a subset of the services.
     if url_list is not None:
         # Make sure URL is unique and fixed.
-        url_list = set(six.moves.map(unescape_all, [cur_url.encode('utf-8') if isinstance(cur_url, str) else cur_url for cur_url in url_list]))
+        url_list = set(six.moves.map(unescape_all,
+            [cur_url.encode('utf-8') if isinstance(cur_url, str) else cur_url
+             for cur_url in url_list]))
         uniq_rows = len(url_list)
         url_list_processed = []  # To track if given URL is valid in registry
         if verbose:

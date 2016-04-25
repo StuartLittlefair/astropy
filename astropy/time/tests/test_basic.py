@@ -6,6 +6,7 @@ import copy
 import functools
 import sys
 import datetime
+from copy import deepcopy
 
 import numpy as np
 
@@ -30,7 +31,13 @@ allclose_sec = functools.partial(np.allclose, rtol=2. ** -52,
 allclose_year = functools.partial(np.allclose, rtol=2. ** -52,
                                   atol=0.)  # 14 microsec at current epoch
 
+def setup_function(func):
+    func.FORMATS_ORIG = deepcopy(Time.FORMATS)
 
+
+def teardown_function(func):
+    Time.FORMATS.clear()
+    Time.FORMATS.update(func.FORMATS_ORIG)
 
 
 class TestBasic():
@@ -217,22 +224,10 @@ class TestBasic():
         # Uses initial class-defined precision=3
         assert t.iso == '2010-01-01 00:00:00.000'
 
-        # Set global precision = 5  XXX this uses private var, FIX THIS
-        Time._precision = 5
-        assert t.iso == '2010-01-01 00:00:00.00000'
-
         # Set instance precision to 9
         t.precision = 9
         assert t.iso == '2010-01-01 00:00:00.000000000'
         assert t.tai.utc.iso == '2010-01-01 00:00:00.000000000'
-
-        # Restore global to original default of 3, instance is still at 9
-        Time._precision = 3
-        assert t.iso == '2010-01-01 00:00:00.000000000'
-
-        # Make a new time instance and confirm precision = 3
-        t = Time('2010-01-01 00:00:00', format='iso', scale='utc')
-        assert t.iso == '2010-01-01 00:00:00.000'
 
     def test_transforms(self):
         """Transform from UTC to all supported time scales (TAI, TCB, TCG,
@@ -750,6 +745,12 @@ class TestCopyReplicate():
         # This is not allowed publicly, but here we hack the internal time
         # and location values to show that t and t2 are sharing references.
         t2._time.jd1 += 100.0
+
+        # Need to delete the cached yday attributes (only an issue because
+        # of the internal _time hack).
+        del t.cache
+        del t2.cache
+
         assert t.yday == t2.yday
         assert t.yday != t_yday  # prove that it changed
         t2_loc_x_view = t2.location.x
@@ -769,6 +770,12 @@ class TestCopyReplicate():
         # This is not allowed publicly, but here we hack the internal time
         # and location values to show that t and t2 are not sharing references.
         t2._time.jd1 += 100.0
+
+        # Need to delete the cached yday attributes (only an issue because
+        # of the internal _time hack).
+        del t.cache
+        del t2.cache
+
         assert t.yday != t2.yday
         assert t.yday == t_yday  # prove that it did not change
         t2_loc_x_view = t2.location.x
@@ -1051,3 +1058,28 @@ def test_to_datetime_pytz():
     for dt, tz_dt in zip(time.datetime, tz_aware_datetime):
         assert tz.tzname(dt) == tz_dt.tzname()
     assert np.all(time == forced_to_astropy_time)
+
+def test_cache():
+    t = Time('2010-09-03 00:00:00')
+    t2 = Time('2010-09-03 00:00:00')
+
+    # Time starts out without a cache
+    assert 'cache' not in t.__dict__
+
+    # Access the iso format and confirm that the cached version is as expected
+    t.iso
+    assert t.cache['format']['iso'] == t2.iso
+
+    # Access the TAI scale and confirm that the cached version is as expected
+    t.tai
+    assert t.cache['scale']['tai'] == t2.tai
+
+    # New Time object after scale transform does not have a cache yet
+    assert 'cache' not in t.tt.__dict__
+
+    # Clear the cache
+    del t.cache
+    assert 'cache' not in t.__dict__
+    # Check accessing the cache creates an empty dictionary
+    assert not t.cache
+    assert 'cache' in t.__dict__

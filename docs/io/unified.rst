@@ -117,7 +117,7 @@ that all supported ASCII table formats will be tried in order to successfully
 parse the input.  For example::
 
   >>> t = Table.read('astropy/io/ascii/tests/t/latex1.tex', format='ascii')
-  >>> print t
+  >>> print(t)
   cola colb colc
   ---- ---- ----
      a    1    2
@@ -293,9 +293,9 @@ file that has multiple datasets, use *both* the ``overwrite=True`` and
 
 If the metadata of the table cannot be written directly to the HDF5 file 
 (e.g. dictionaries), or if you want to preserve the units and description
-of tables and columns, use using ``serialized_meta=True``::
+of tables and columns, use using ``serialize_meta=True``::
 
-    >>> t.write('observations.hdf5', path='updated_data', serialized_meta=True)
+    >>> t.write('observations.hdf5', path='updated_data', serialize_meta=True)
  
 Finally, when writing to HDF5 files, the ``compression=`` argument can be
 used to ensure that the data is compressed on disk::

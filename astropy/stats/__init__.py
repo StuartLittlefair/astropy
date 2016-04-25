@@ -13,5 +13,8 @@ astronomers' needs.
 
 from .funcs import *
 from .sigma_clipping import *
+from .jackknife import *
+from .circstats import *
 from .bayesian_blocks import *
 from .histogram import *
+from .info_theory import *

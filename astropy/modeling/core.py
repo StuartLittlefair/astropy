@@ -25,7 +25,7 @@ import sys
 import types
 import warnings
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from itertools import chain, islice
 
 import numpy as np
@@ -39,7 +39,6 @@ from ..utils import (deprecated, sharedmethod, find_current_module,
 from ..utils.codegen import make_function_with_signature
 from ..utils.compat import ignored
 from ..utils.compat.funcsigs import signature
-from ..utils.compat.odict import OrderedDict
 from ..utils.exceptions import AstropyDeprecationWarning
 from .utils import (array_repr_oneline, check_broadcast, combine_labels,
                     make_binary_operator_eval, ExpressionTree,
@@ -1075,25 +1074,39 @@ class Model(object):
 
     def render(self, out=None, coords=None):
         """
-        Evaluates a model on an input array. Evaluation is limited to
-        a bounding box if the `Model.bounding_box` attribute is set.
+        Evaluate a model at fixed positions, respecting the ``bounding_box``.
+
+        The key difference relative to evaluating the model directly is that
+        this method is limited to a bounding box if the `Model.bounding_box`
+        attribute is set.
 
         Parameters
         ----------
         out : `numpy.ndarray`, optional
-            The array on which the model is to be evaluated.
+            An array that the evaluated model will be added to.  If this is not
+            given (or given as ``None``), a new array will be created.
         coords : array-like, optional
-            Coordinate arrays mapping to ``arr``, such that
-            ``arr[coords] == arr``.
+            An array to be used to translate from the model's input coordinates
+            to the ``out`` array. It should have the property that
+            ``self(coords)`` yields the same shape as ``out``.  If ``out`` is
+            not specified, ``coords`` will be used to determine the shape of the
+            returned array. If this is not provided (or None), the model will be
+            evaluated on a grid determined by `Model.bounding_box`.
 
         Returns
         -------
         out : `numpy.ndarray`
-            The model evaluated on the input array if given, or else a new array from
-            ``coords``.
+            The model added to ``out`` if  ``out`` is not ``None``, or else a
+            new array from evaluating the model over ``coords``.
             If ``out`` and ``coords`` are both `None`, the returned array is
             limited to the `Model.bounding_box` limits. If
             `Model.bounding_box` is `None`, ``arr`` or ``coords`` must be passed.
+
+        Raises
+        ------
+        ValueError
+            If ``coords`` are not given and the the `Model.bounding_box` of this
+            model is not set.
 
         Examples
         --------
@@ -1135,7 +1148,6 @@ class Model(object):
                     'of dimensions.')
 
         if bbox is not None:
-
             # assures position is at center pixel, important when using add_array
             pd = np.array([(np.mean(bb), np.ceil((bb[1] - bb[0]) / 2))
                            for bb in bbox]).astype(int).T
@@ -1881,8 +1893,7 @@ class _CompoundModelMeta(_ModelMeta):
             return cls._format_cls_repr()
 
         expression = cls._format_expression()
-        components = '\n\n'.join('[{0}]: {1!r}'.format(idx, m)
-                                 for idx, m in enumerate(cls._get_submodels()))
+        components = cls._format_components()
         keywords = [
             ('Expression', expression),
             ('Components', '\n' + indent(components))
@@ -1890,14 +1901,11 @@ class _CompoundModelMeta(_ModelMeta):
 
         return cls._format_cls_repr(keywords=keywords)
 
-    def __dir__(cls, *args):
+    def __dir__(cls):
         """
         Returns a list of attributes defined on a compound model, including
         all of its parameters.
         """
-
-        # The *args is to address a bug (?) on Python 2.6 where the dir()
-        # builtin calls __dir__ with an additional (unused) argument
 
         try:
             # Annoyingly, this will only work for Python 3.3+
@@ -2302,6 +2310,10 @@ class _CompoundModelMeta(_ModelMeta):
         # albeit with more formatting options
         return cls._tree.format_expression(OPERATOR_PRECEDENCE)
 
+    def _format_components(cls):
+        return '\n\n'.join('[{0}]: {1!r}'.format(idx, m)
+                                 for idx, m in enumerate(cls._get_submodels()))
+
     def _normalize_index(cls, index):
         """
         Converts an index given to __getitem__ to either an integer, or
@@ -2433,6 +2445,15 @@ class _CompoundModel(Model):
     col_fit_deriv = False
 
     _submodels = None
+
+    def __str__(self):
+        expression = self._format_expression()
+        components = self._format_components()
+        keywords = [
+            ('Expression', expression),
+            ('Components', '\n' + indent(components))
+        ]
+        return super(_CompoundModel, self)._format_str(keywords=keywords)
 
     def __getattr__(self, attr):
         value = getattr(self.__class__, attr)

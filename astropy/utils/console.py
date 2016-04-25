@@ -26,6 +26,10 @@ except ImportError:
     _CAN_RESIZE_TERMINAL = False
 
 try:
+    from IPython import get_ipython
+except ImportError:
+    pass
+try:
     get_ipython()
 except NameError:
     OutStream = None
@@ -67,12 +71,10 @@ else:
         # Just define a dummy class
         class PyreadlineConsole(object): pass
 
-from ..config import ConfigAlias
 from ..extern import six
 from ..extern.six.moves import range
 from .. import conf
 
-from .decorators import deprecated
 from .misc import isiterable
 
 
@@ -80,12 +82,6 @@ __all__ = [
     'isatty', 'color_print', 'human_time', 'human_file_size',
     'ProgressBar', 'Spinner', 'print_code_line', 'ProgressBarOrSpinner',
     'terminal_size']
-
-
-# Only use color by default on Windows if IPython is installed.
-USE_COLOR = ConfigAlias(
-    '0.4', 'USE_COLOR', 'use_color', 'astropy.utils.console', 'astropy')
-
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -441,6 +437,12 @@ def human_file_size(size):
     size : str
         A human-friendly representation of the size of the file
     """
+    if hasattr(size, 'unit'):
+        # Import units only if necessary because the import takes a
+        # significant time [#4649]
+        from .. import units as u
+        size = size.to(u.byte).value
+
     suffixes = ' kMGTPEZY'
     if size == 0:
         num_scale = 0
@@ -626,7 +628,7 @@ class ProgressBar(six.Iterator):
         write(' {0:>4s}/{1:>4s}'.format(
             human_file_size(value),
             self._human_total))
-        write(' ({0:>6s}%)'.format('{0:.2f}'.format(frac * 100.0)))
+        write(' ({:>6.2%})'.format(frac))
         write(prefix)
         if t is not None:
             write(human_time(t))
@@ -656,9 +658,9 @@ class ProgressBar(six.Iterator):
             self._widget.value = 0
 
         # Calculate percent completion, and update progress bar
-        percent = (value/self._total) * 100
-        self._widget.value = percent
-        self._widget.description =' ({0:>6s}%)'.format('{0:.2f}'.format(percent))
+        frac = (value/self._total)
+        self._widget.value = frac * 100
+        self._widget.description =' ({:>6.2%})'.format(frac)
 
 
     def _silent_update(self, value=None):
@@ -1025,12 +1027,12 @@ class Getch(object):
 
 class _GetchUnix(object):
     def __init__(self):
-        import tty
-        import sys
+        import tty  # pylint: disable=W0611
+        import sys  # pylint: disable=W0611
 
         # import termios now or else you'll get the Unix
         # version on the Mac
-        import termios
+        import termios  # pylint: disable=W0611
 
     def __call__(self):
         import sys
@@ -1048,7 +1050,7 @@ class _GetchUnix(object):
 
 class _GetchWindows(object):
     def __init__(self):
-        import msvcrt
+        import msvcrt  # pylint: disable=W0611
 
     def __call__(self):
         import msvcrt

@@ -1,7 +1,16 @@
 from os.path import abspath, dirname, join
+import textwrap
 
 from ..table import Table
 from ... import extern
+from ...tests.helper import pytest
+
+try:
+    import IPython  # pylint: disable=W0611
+except ImportError:
+    HAS_IPYTHON = False
+else:
+    HAS_IPYTHON = True
 
 EXTERN_DIR = abspath(dirname(extern.__file__))
 
@@ -25,9 +34,10 @@ table.dataTable {width: auto !important; margin: 0 !important;}
   <script>
 $(document).ready(function() {
     $('#%(table_id)s').dataTable({
-     "iDisplayLength": %(length)s,
-     "aLengthMenu": [[%(display_length)s, -1], [%(display_length)s, 'All']],
-     "pagingType": "full_numbers"
+        "order": [],
+        "iDisplayLength": %(length)s,
+        "aLengthMenu": [[%(display_length)s, -1], [%(display_length)s, 'All']],
+        "pagingType": "full_numbers"
     });
 } );  </script>
   <table class="%(table_class)s" id="%(table_id)s">
@@ -68,7 +78,7 @@ def test_write_jsviewer_default(tmpdir):
         table_id='table%s' % id(t),
         length='50',
         display_length='10, 25, 50, 100, 500, 1000',
-        datatables_css_url='https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css',
+        datatables_css_url='https://cdn.datatables.net/1.10.9/css/jquery.dataTables.css',
         datatables_js_url='https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js',
         jquery_url='https://code.jquery.com/jquery-1.11.3.min.js'
     )
@@ -92,7 +102,7 @@ def test_write_jsviewer_options(tmpdir):
         table_id='test',
         length='5',
         display_length='5, 10, 25, 50, 100, 500, 1000',
-        datatables_css_url='https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css',
+        datatables_css_url='https://cdn.datatables.net/1.10.9/css/jquery.dataTables.css',
         datatables_js_url='https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js',
         jquery_url='https://code.jquery.com/jquery-1.11.3.min.js'
     )
@@ -116,9 +126,34 @@ def test_write_jsviewer_local(tmpdir):
         table_id='test',
         length='50',
         display_length='10, 25, 50, 100, 500, 1000',
-        datatables_css_url='file://' + join(EXTERN_DIR, 'css', 'jquery.dataTables.min.css'),
+        datatables_css_url='file://' + join(EXTERN_DIR, 'css', 'jquery.dataTables.css'),
         datatables_js_url='file://' + join(EXTERN_DIR, 'js', 'jquery.dataTables.min.js'),
         jquery_url='file://' + join(EXTERN_DIR, 'js', 'jquery-1.11.3.min.js')
     )
     with open(tmpfile) as f:
         assert f.read().strip() == ref.strip()
+
+
+@pytest.mark.skipif('not HAS_IPYTHON')
+def test_show_in_notebook():
+    t = Table()
+    t['a'] = [1, 2, 3, 4, 5]
+    t['b'] = ['b', 'c', 'a', 'd', 'e']
+
+    htmlstr_windx = t.show_in_notebook().data  # should default to 'idx'
+    htmlstr_windx_named = t.show_in_notebook(show_row_index='realidx').data
+    htmlstr_woindx = t.show_in_notebook(show_row_index=False).data
+
+    assert (textwrap.dedent("""
+    <thead><tr><th>idx</th><th>a</th><th>b</th></tr></thead>
+    <tr><td>0</td><td>1</td><td>b</td></tr>
+    <tr><td>1</td><td>2</td><td>c</td></tr>
+    <tr><td>2</td><td>3</td><td>a</td></tr>
+    <tr><td>3</td><td>4</td><td>d</td></tr>
+    <tr><td>4</td><td>5</td><td>e</td></tr>
+    """).strip() in htmlstr_windx)
+
+
+    assert '<thead><tr><th>realidx</th><th>a</th><th>b</th></tr></thead>' in htmlstr_windx_named
+
+    assert '<thead><tr><th>a</th><th>b</th></tr></thead>' in htmlstr_woindx

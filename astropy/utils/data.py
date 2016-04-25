@@ -28,6 +28,12 @@ from .. import config as _config
 from ..utils.exceptions import AstropyWarning
 from ..utils.introspection import find_current_module, resolve_name
 
+try:
+    import pathlib
+except ImportError:
+    HAS_PATHLIB = False
+else:
+    HAS_PATHLIB = True
 
 __all__ = [
     'Conf', 'conf', 'get_readable_fileobj', 'get_file_contents',
@@ -68,20 +74,6 @@ class Conf(_config.ConfigNamespace):
 conf = Conf()
 
 
-DATAURL = _config.ConfigAlias(
-    '0.4', 'DATAURL', 'dataurl')
-REMOTE_TIMEOUT = _config.ConfigAlias(
-    '0.4', 'REMOTE_TIMEOUT', 'remote_timeout')
-COMPUTE_HASH_BLOCK_SIZE = _config.ConfigAlias(
-    '0.4', 'COMPUTE_HASH_BLOCK_SIZE', 'compute_hash_block_size')
-DOWNLOAD_CACHE_BLOCK_SIZE = _config.ConfigAlias(
-    '0.4', 'DOWNLOAD_CACHE_BLOCK_SIZE', 'download_block_size')
-DOWNLOAD_CACHE_LOCK_ATTEMPTS = _config.ConfigAlias(
-    '0.4', 'DOWNLOAD_CACHE_LOCK_ATTEMPTS', 'download_cache_lock_attempts')
-DELETE_TEMPORARY_DOWNLOADS_AT_EXIT = _config.ConfigAlias(
-    '0.4', 'DELETE_TEMPORARY_DOWNLOADS_AT_EXIT', 'delete_temporary_downloads_at_exit')
-
-
 class CacheMissingWarning(AstropyWarning):
     """
     This warning indicates the standard cache directory is not accessible, with
@@ -101,11 +93,10 @@ def _is_url(string):
         The string to test
     """
     url = urllib.parse.urlparse(string)
-    # url[0]==url.scheme, but url[0] is py 2.6-compat
-    # we can't just check that url[0] is not an empty string, because
+    # we can't just check that url.scheme is not an empty string, because
     # file paths in windows would return a non-empty scheme (e.g. e:\\
     # returns 'e').
-    return url[0].lower() in ['http', 'https', 'ftp', 'sftp', 'ssh', 'file']
+    return url.scheme.lower() in ['http', 'https', 'ftp', 'sftp', 'ssh', 'file']
 
 
 def _is_inside(path, parent_path):
@@ -121,7 +112,7 @@ def _is_inside(path, parent_path):
 def get_readable_fileobj(name_or_obj, encoding=None, cache=False,
                          show_progress=True, remote_timeout=None):
     """
-    Given a filename or a readable file-like object, return a context
+    Given a filename, pathlib.Path object or a readable file-like object, return a context
     manager that yields a readable file-like object.
 
     This supports passing filenames, URLs, and readable file-like objects,
@@ -169,7 +160,7 @@ def get_readable_fileobj(name_or_obj, encoding=None, cache=False,
 
     remote_timeout : float
         Timeout for remote requests in seconds (default is the configurable
-        REMOTE_TIMEOUT, which is 3s by default)
+        `astropy.utils.data.Conf.remote_timeout`, which is 3s by default)
 
     Returns
     -------
@@ -182,6 +173,10 @@ def get_readable_fileobj(name_or_obj, encoding=None, cache=False,
     # passed in.  In that case it is not the responsibility of this
     # function to close it: doing so could result in a "double close"
     # and an "invalid file descriptor" exception.
+    PATH_TYPES = six.string_types
+    if HAS_PATHLIB:
+        PATH_TYPES += (pathlib.Path,)
+
     close_fds = []
     delete_fds = []
 
@@ -190,7 +185,11 @@ def get_readable_fileobj(name_or_obj, encoding=None, cache=False,
         remote_timeout = conf.remote_timeout
 
     # Get a file object to the content
-    if isinstance(name_or_obj, six.string_types):
+    if isinstance(name_or_obj, PATH_TYPES):
+        # name_or_obj could be a Path object if pathlib is available
+        if HAS_PATHLIB:
+            name_or_obj = str(name_or_obj)
+
         is_url = _is_url(name_or_obj)
         if is_url:
             name_or_obj = download_file(
@@ -221,7 +220,7 @@ def get_readable_fileobj(name_or_obj, encoding=None, cache=False,
     if signature[:3] == b'\x1f\x8b\x08':  # gzip
         import struct
         try:
-            from .compat import gzip
+            import gzip
             fileobj_new = gzip.GzipFile(fileobj=fileobj, mode='rb')
             fileobj_new.read(1)  # need to check that the file is really gzip
         except (IOError, EOFError):  # invalid gzip file
@@ -1002,7 +1001,7 @@ def download_file(remote_url, cache=False, show_progress=True, timeout=None):
 
     if timeout is None:
         # use configfile default
-        timeout = REMOTE_TIMEOUT()
+        timeout = conf.remote_timeout()
 
     if cache:
         try:

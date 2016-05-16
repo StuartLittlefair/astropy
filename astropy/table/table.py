@@ -30,6 +30,7 @@ from .row import Row
 from .np_utils import fix_column_name, recarray_fromrecords
 from .info import TableInfo
 from .index import Index, _IndexModeContext, get_index
+from . import conf
 
 
 __doctest_skip__ = ['Table.read', 'Table.write',
@@ -149,7 +150,7 @@ class Table(object):
 
     Parameters
     ----------
-    data : numpy ndarray, dict, list, or Table, optional
+    data : numpy ndarray, dict, list, Table, or table-like object, optional
         Data to initialize table.
     masked : bool, optional
         Specify whether the table is masked.
@@ -165,6 +166,8 @@ class Table(object):
         Row-oriented data for table instead of ``data`` argument
     copy_indices : bool, optional
         Copy any indices in the input data (default=True)
+    **kwargs : dict, optional
+        Additional keyword args when converting table-like object
     """
 
     meta = MetaData()
@@ -237,7 +240,8 @@ class Table(object):
         return data
 
     def __init__(self, data=None, masked=None, names=None, dtype=None,
-                 meta=None, copy=True, rows=None, copy_indices=True):
+                 meta=None, copy=True, rows=None, copy_indices=True,
+                 **kwargs):
 
         # Set up a placeholder empty table
         self._set_masked(masked)
@@ -272,6 +276,18 @@ class Table(object):
         # function, number of columns, and potentially the default col names
 
         default_names = None
+
+        if hasattr(data, '__astropy_table__'):
+            # Data object implements the __astropy_table__ interface method.
+            # Calling that method returns an appropriate instance of
+            # self.__class__ and respects the `copy` arg.  The returned
+            # Table object should NOT then be copied (though the meta
+            # will be deep-copied anyway).
+            data = data.__astropy_table__(self.__class__, copy, **kwargs)
+            copy = False
+        elif kwargs:
+            raise TypeError('__init__() got unexpected keyword argument {!r}'
+                            .format(list(kwargs.keys())[0]))
 
         if (isinstance(data, np.ndarray) and
                 data.shape == (0,) and
@@ -736,11 +752,20 @@ class Table(object):
         """
         Iterate over the columns of this table.
 
-        Example
-        -----------
-        t = Table([[1], [2]])
-        for col in t.itercols():
-            print(col)
+        Examples
+        --------
+
+        To iterate over the columns of a table::
+
+            >>> t = Table([[1], [2]])
+            >>> for col in t.itercols():
+            ...     print(col)
+            col0
+            ----
+               1
+            col1
+            ----
+               2
 
         Using ``itercols()`` is similar to  ``for col in t.columns.values()``
         but is syntactically preferred.
@@ -778,7 +803,8 @@ class Table(object):
         return out
 
     def _repr_html_(self):
-        return self._base_repr_(html=True, max_width=-1)
+        return self._base_repr_(html=True, max_width=-1,
+                                tableclass=conf.default_notebook_table_class)
 
     def __repr__(self):
         return self._base_repr_(html=False, max_width=None)
@@ -876,8 +902,7 @@ class Table(object):
             return self
 
     def show_in_notebook(self, tableid=None, css=None, display_length=50,
-                         table_class='table table-striped table-bordered '
-                         'table-condensed', show_row_index='idx'):
+                         table_class='astropy-default', show_row_index='idx'):
         """Render the table in HTML and show it in the IPython notebook.
 
         Parameters
@@ -889,9 +914,12 @@ class Table(object):
             multiple times.
         table_class : str or `None`
             A string with a list of HTML classes used to style the table.
-            Default is "table table-striped table-bordered table-condensed",
-            using Bootstrap which is available in the notebook. See `this page
-            <http://getbootstrap.com/css/#tables>`_ for the list of classes.
+            The special default string ('from-apy-default') means that the string
+            will be retreived from the configuration item
+            ``astropy.table.default_notebook_table_class``. Note that these
+            table classes may make use of bootstrap, as this is loaded with the
+            notebook.  See `this page <http://getbootstrap.com/css/#tables>`_
+            for the list of classes.
         css : string
             A valid CSS string declaring the formatting for the table. Default
             to ``astropy.table.jsviewer.DEFAULT_CSS_NB``.
@@ -926,6 +954,8 @@ class Table(object):
             display_table = self._make_index_row_display_table(show_row_index)
         else:
             display_table = self
+        if table_class == 'astropy-default':
+            table_class = conf.default_notebook_table_class
         html = display_table._base_repr_(html=True, max_width=-1, tableid=tableid,
                                          max_lines=-1, show_dtype=False,
                                          tableclass=table_class)
@@ -2535,7 +2565,7 @@ class QTable(Table):
 
     Parameters
     ----------
-    data : numpy ndarray, dict, list, or Table, optional
+    data : numpy ndarray, dict, list, Table, or table-like object, optional
         Data to initialize table.
     masked : bool, optional
         Specify whether the table is masked.
@@ -2549,13 +2579,12 @@ class QTable(Table):
         Copy the input data (default=True).
     rows : numpy ndarray, list of lists, optional
         Row-oriented data for table instead of ``data`` argument
+    copy_indices : bool, optional
+        Copy any indices in the input data (default=True)
+    **kwargs : dict, optional
+        Additional keyword args when converting table-like object
 
     """
-    def __init__(self, data=None, masked=None, names=None, dtype=None,
-                 meta=None, copy=True, rows=None, copy_indices=True):
-        super(QTable, self).__init__(data, masked, names, dtype, meta,
-                                     copy, rows, copy_indices)
-
     def _add_as_mixin_column(self, col):
         """
         Determine if ``col`` should be added to the table directly as

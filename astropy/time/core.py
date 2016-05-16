@@ -594,19 +594,19 @@ class Time(object):
         if not skycoord.is_transformable_to(ICRS()):
             raise ValueError("Given skycoord is not transformable to the ICRS")
 
-        # get location of observatory in ITRS coordinates at this Time
+        # get GCRS position and velocity at this Time
         try:
-            itrs = location.get_itrs(obstime=self)
+            obsgeoloc, obsgeovel = location.get_gcrs_posvel(obstime=self)
         except:
-            raise ValueError("Supplied location does not have a valid `get_itrs` method")
+            raise ValueError("Supplied location does not have a valid `get_gcrs_posvel` "
+                             "method")
+        gcrs_coo = GCRS(CartesianRepresentation([0., 0., 0.]*u.km), obstime=self,
+                        obsgeoloc=obsgeoloc, obsgeovel=obsgeovel)
 
         if kind.lower() == 'heliocentric':
             # convert to heliocentric coordinates, aligned with ICRS
-            cpos = itrs.transform_to(HCRS(obstime=self)).cartesian.xyz
+            cpos = gcrs_coo.transform_to(HCRS(obstime=self)).cartesian.xyz
         else:
-            # first we need to convert to GCRS coordinates with the correct
-            # obstime, since ICRS coordinates have no frame time
-            gcrs_coo = itrs.transform_to(GCRS(obstime=self))
             # convert to barycentric (BCRS) coordinates, aligned with ICRS
             cpos = gcrs_coo.transform_to(ICRS()).cartesian.xyz
 
